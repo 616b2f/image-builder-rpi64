@@ -150,9 +150,8 @@ echo "dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 cgro
 
 # create a default boot/config.txt file (details see http://elinux.org/RPiconfig)
 echo "
-# enable UART console on GPIO pins
-enable_uart=1
 hdmi_force_hotplug=1
+enable_uart=0
 " > boot/config.txt
 
 # echo "# camera settings, see http://elinux.org/RPiconfig#Camera
@@ -179,7 +178,9 @@ kernel=kernel8-p4.img
 
 # # /etc/modules
 # echo "snd_bcm2835
-# " >> /etc/modules
+## load ipv6 module it is not loaded by default
+echo "br_netfilter
+" >> /etc/modules-load.d/br-netfilter.conf
 
 # create /etc/fstab
 echo "
@@ -202,8 +203,7 @@ apt-get install -y \
   --no-install-recommends \
   wpasupplicant \
   wireless-tools \
-  ethtool \
-  crda
+  crda \
 
 # # add firmware and packages for managing bluetooth devices
 # apt-get install -y \
@@ -229,6 +229,28 @@ apt-get install -y \
 mkdir -p /var/lib/cloud/seed/nocloud-net
 ln -s /boot/user-data /var/lib/cloud/seed/nocloud-net/user-data
 ln -s /boot/meta-data /var/lib/cloud/seed/nocloud-net/meta-data
+ln -s /boot/network-config /var/lib/cloud/seed/nocloud-net/network-config
+
+# Fix duplicate IP address for eth0, remove file from os-rootfs
+rm -f /etc/network/interfaces.d/eth0
+
+
+# Disable dhcpcd - it has a conflict with cloud-init network config
+systemctl mask dhcpcd
+
+# Fix /etc/network/interfaces so the cloud-init network config is used
+echo "source /etc/network/interfaces.d/*" > /etc/network/interfaces
+
+# Install resolvconf ...
+apt-get install -y \
+  resolvconf
+
+# Install sshpass (often needed when you use ansible playbooks)
+apt-get install -y \
+  sshpass
+
+# and disable systemd-resolved - it doesn't work with cloud-init network config
+systemctl mask systemd-resolved
 
 # enable Docker Engine experimental features
 mkdir -p /etc/docker/
@@ -274,6 +296,14 @@ chmod +x /usr/local/bin/docker-machine
 curl -sSL "https://raw.githubusercontent.com/docker/machine/v${DOCKER_MACHINE_VERSION}/contrib/completion/bash/docker-machine.bash" -o /etc/bash_completion.d/docker-machine
 
 # install Docker Compose via pip
+# apt-get install -y \
+#   --no-install-recommends \
+#   python python-pip 
+#python3-setuptools
+# update-alternatives --install /usr/bin/python python /usr/bin/python3.7 2
+# pip3 install docker-compose=="${DOCKER_COMPOSE_VERSION}"
+
+# install Docker Compose via pip
 apt-get install -y \
   --no-install-recommends \
   python
@@ -286,6 +316,9 @@ curl -sSL "https://raw.githubusercontent.com/docker/compose/${DOCKER_COMPOSE_VER
 echo "Installing rpi-serial-console script"
 wget -q https://raw.githubusercontent.com/lurch/rpi-serial-console/master/rpi-serial-console -O usr/local/bin/rpi-serial-console
 chmod +x usr/local/bin/rpi-serial-console
+
+# fix eth0 interface name
+ln -s /dev/null /etc/systemd/network/99-default.link
 
 # cleanup APT cache and lists
 apt-get clean
