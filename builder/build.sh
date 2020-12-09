@@ -6,6 +6,10 @@ if [ ! -f /.dockerenv ]; then
   exit 1
 fi
 
+# get versions for software that needs to be installed
+# shellcheck disable=SC1091
+source /workspace/versions.config
+
 ### setting up some important variables to control the build process
 
 # place to store our created sd-image file
@@ -14,7 +18,7 @@ BUILD_RESULT_PATH="/workspace"
 # place to build our sd-image
 BUILD_PATH="/build"
 
-ROOTFS_TAR=${ROOT_FS_ARTIFACT}
+ROOTFS_TAR=rootfs-${BUILD_ARCH}-debian-$HYPRIOT_OS_VERSION.tar.gz
 ROOTFS_TAR_PATH="${BUILD_RESULT_PATH}/${ROOTFS_TAR}"
 
 # Show CIRCLE_TAG in Circle builds
@@ -54,8 +58,8 @@ tar xf "${ROOTFS_TAR_PATH}" -C "${BUILD_PATH}"
 FILENAME=/workspace/$BOOTLOADER_ARTIFACT
 if [ ! -f "$FILENAME" ]; then
   if [ "$FETCH_MISSING_ARTIFACTS" == "true" ]; then
-    fetch --repo="https://github.com/DieterReuter/rpi-bootloader" --tag="v$BOOTLOADER_BUILD" --release-asset="rpi-bootloader.tar.gz.sha256" /workspace
-    fetch --repo="https://github.com/DieterReuter/rpi-bootloader" --tag="v$BOOTLOADER_BUILD" --release-asset="rpi-bootloader.tar.gz" /workspace
+    wget -q -P /workspace/ "https://github.com/DieterReuter/rpi-bootloader/releases/download/v${BOOTLOADER_BUILD}/rpi-bootloader.tar.gz.sha256"
+    wget -q -P /workspace/ "https://github.com/DieterReuter/rpi-bootloader/releases/download/v${BOOTLOADER_BUILD}/rpi-bootloader.tar.gz"
   else
     echo "Missing artifact ${BOOTLOADER_ARTIFACT}"
     exit 255
@@ -66,8 +70,8 @@ tar -xf "$FILENAME" -C "${BUILD_PATH}"
 FILENAME=/workspace/$KERNEL_ARTIFACT
 if [ ! -f "$FILENAME" ]; then
   if [ "$FETCH_MISSING_ARTIFACTS" == "true" ]; then
-    fetch --repo="https://github.com/DieterReuter/rpi64-kernel" --tag="v$KERNEL_BUILD" --release-asset="$KERNEL_VERSION-hypriotos-v8.tar.gz.sha256" /workspace
-    fetch --repo="https://github.com/DieterReuter/rpi64-kernel" --tag="v$KERNEL_BUILD" --release-asset="$KERNEL_VERSION-hypriotos-v8.tar.gz" /workspace
+    wget -q -P /workspace/ "https://github.com/DieterReuter/rpi64-kernel/releases/download/v${KERNEL_BUILD}/${KERNEL_VERSION}-hypriotos-v8.tar.gz.sha256"
+    wget -q -P /workspace/ "https://github.com/DieterReuter/rpi64-kernel/releases/download/v${KERNEL_BUILD}/${KERNEL_VERSION}-hypriotos-v8.tar.gz"
   else
     echo "Missing artifact ${KERNEL_ARTIFACT}"
     exit 255
@@ -79,7 +83,7 @@ tar -xf "$FILENAME" -C "${BUILD_PATH}"
 FILENAME=/workspace/$RPI4_KERNEL_ARTIFACT
 if [ ! -f "$FILENAME" ]; then
   if [ "$FETCH_MISSING_ARTIFACTS" == "true" ]; then
-    fetch --repo="https://github.com/sakaki-/bcm2711-kernel-bis" --tag="$RPI4_KERNEL_BUILD" --release-asset="${RPI4_KERNEL_ARTIFACT}" /workspace
+    wget -q -P /workspace/ "https://github.com/sakaki-/bcm2711-kernel-bis/releases/download/v${RPI4_KERNEL_BUILD}/${RPI4_KERNEL_ARTIFACT}"
   else
     echo "Missing artifact ${KERNEL_ARTIFACT}"
     exit 255
